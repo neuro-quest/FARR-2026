@@ -146,6 +146,12 @@
   .q-card::before{content:"";position:absolute;top:-9px;left:40px;border:10px solid transparent;border-bottom-color:#fff;border-top:0}
   .q-card p{margin:0 0 10px;font-size:15px;line-height:1.45}
   .q-card p.ask{margin:0;font-weight:700;font-size:16px;color:var(--primary-d)}
+  .opt.multi{display:flex;gap:12px;align-items:flex-start}
+  .opt .box{flex:none;width:24px;height:24px;margin-top:1px;border:2px solid var(--line);border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-size:15px;font-weight:800;color:#fff}
+  .opt.sel .box{background:var(--primary);border-color:var(--primary)}
+  .opt .miss{display:block;margin-top:6px;font-size:12px;font-weight:700;color:var(--ok)}
+  .opt .miss.bad{color:var(--err)}
   .pid{font-size:11px;color:var(--muted);text-align:center;margin-top:12px}
   .toast{position:fixed;left:50%;top:24px;transform:translateX(-50%) scale(.9);background:var(--ok);color:#fff;
     border-radius:18px;padding:16px 26px;font-weight:800;font-size:22px;opacity:0;
@@ -231,16 +237,18 @@ const CONFIG = {
     expert: { name: 'Пасечник И. Н.', role: 'Модератор симпозиума Nutricia', photo: EXPERT_DATA },
     // Абзацы задачи. Последний абзац (сам вопрос) выделяется жирным.
     question: [
-      'Пациент, 56 лет, госпитализирован в ОРИТ с тяжелой ЧМТ.',
-      'На 4-е сутки состояние стабилизируется, однако на фоне проводимой инсулинотерапии сохраняется гипергликемия >12 ммоль/л. Пациент нуждается в энтеральном питании, при этом актуальны повышенные потребности в белке и энергии.',
-      'Какой продукт линейки Нутриция целесообразно рассмотреть?'
+      'Пациенту в ОРИТ назначено энтеральное питание в соответствии с расчётными потребностями.',
+      'Какие условия, помимо этого, определяют эффективность нутритивной терапии?'
     ],
+    hint: 'Отметьте все верные варианты.',
     options: [
-      'А. Нутризон Эдванст Диазон',
-      'Б. Нутризон Диазон НЕ НР (High Energy High Protein)',
-      'В. Стандартная смесь для энтерального питания'
+      'А. Достижение целевого поступления белка, а не только энергии, для сохранения мышечной массы, в том числе дыхательной мускулатуры',
+      'Б. Обеспечение фактической доставки назначенного объёма, в том числе при гастростазе',
+      'В. Учёт качества белкового компонента: аминокислотного состава, усвояемости и переносимости'
     ],
-    correct: 1,
+    // Один верный ответ — число (0 = А, 1 = Б, 2 = В). Несколько верных — список: врач отмечает галочками,
+    // ответ засчитывается, только если отмечены все верные и ни одного лишнего.
+    correct: [0, 1, 2],
     // Приз за правильный ответ — ограниченное количество в день
     prize: 'Подарок от Nutricia',
     limitPerDay: { '2026-10-31': 65, '2026-11-01': 65, default: 65 }, // default — для проверки в другие дни
@@ -467,13 +475,18 @@ const S1 = {
       '<span class="asks">задаёт вопрос</span></div></div>' +
     '<div class="q-card">' +
       [].concat(C1.question).map((t, i, a) => '<p' + (i === a.length - 1 ? ' class="ask"' : '') + '>' + esc(t) + '</p>').join('') + '</div>' +
-    C1.options.map((o, j) => '<button class="opt' + (S.s1.sel === j ? ' sel' : '') + '" onclick="pick1(' + j + ')">' + esc(o) + '</button>').join('') +
+    (C1.hint ? '<p class="small" style="margin:-4px 2px 10px">' + esc(C1.hint) + '</p>' : '') +
+    C1.options.map((o, j) => '<button class="opt' + (MULTI ? ' multi' : '') + (isSel(j) ? ' sel' : '') + '" onclick="pick1(' + j + ')">' +
+      (MULTI ? '<span class="box">' + (isSel(j) ? '✓' : '') + '</span>' : '') + '<span>' + esc(o) + '</span></button>').join('') +
     '<div class="msg err" id="m"></div><div class="spacer"></div>' +
     '<button class="btn primary" onclick="answer1()">Ответить</button></main>',
 
   result: () => {
     const r = S.s1;
-    const opts = C1.options.map((o, j) => '<button class="opt' + (j === C1.correct ? ' right' : j === r.sel ? ' wrong' : '') + '" disabled>' + esc(o) + '</button>').join('');
+    const opts = C1.options.map((o, j) => { const ok = RIGHT.indexOf(j) >= 0, me = isSel(j);
+      return '<button class="opt' + (ok ? ' right' : me ? ' wrong' : '') + '" disabled>' + esc(o) +
+        (MULTI && ok && !me ? '<span class="miss">верный вариант — вы его не отметили</span>' : '') +
+        (!ok && me ? '<span class="miss bad">неверный вариант</span>' : '') + '</button>'; }).join('');
     return logo() + '<main>' +
       (r.correct ? '<h2>Верно! 🎉</h2>' + prizeBlock1()
                  : '<h2>Хороший вопрос для обсуждения</h2>' + opts) +
@@ -483,10 +496,19 @@ const S1 = {
   }
 };
 
-function pick1(j){ S.s1.sel = j; saveMe(); render(); }
+const MULTI = Array.isArray(C1.correct);
+const RIGHT = [].concat(C1.correct);
+const selList = () => S.s1.sel === undefined ? [] : [].concat(S.s1.sel);
+const isSel = j => selList().indexOf(j) >= 0;
+function pick1(j){
+  if (MULTI) { const l = selList(), i = l.indexOf(j); if (i >= 0) l.splice(i, 1); else l.push(j); S.s1.sel = l.length ? l.sort() : undefined; }
+  else S.s1.sel = j;
+  saveMe(); render();
+}
 async function answer1(){
   if (S.s1.sel === undefined) { $('m').textContent = 'Выберите вариант ответа'; return; }
-  const correct = S.s1.sel === C1.correct, t = store.now(), day = mskDay(t);
+  const l = selList();
+  const correct = l.length === RIGHT.length && RIGHT.every(x => l.indexOf(x) >= 0), t = store.now(), day = mskDay(t);
   Object.assign(S.s1, { answered: true, correct, ts: t });
   if (correct) {
     const limit = limitFor(day);
@@ -496,7 +518,7 @@ async function answer1(){
   }
   saveMe();
   store.set('s1/answers/' + S.pid, { choice: S.s1.sel, correct, ts: t, day });
-  track('Ответил', { answer: C1.options[S.s1.sel].split('.')[0], correct: correct ? 'да' : 'нет',
+  track('Ответил', { answer: l.map(x => C1.options[x].split('.')[0]).join(''), correct: correct ? 'да' : 'нет',
     prize: !correct ? '' : S.s1.prize === 'won' ? 'забронирован' : 'закончились', code: S.s1.prize === 'won' ? claimCode(S.pid) : '' });
   if (correct) toast(S.s1.prize === 'won' ? 'Верно! Приз ваш' : 'Верно!');
   go('result');
