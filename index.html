@@ -134,6 +134,18 @@
   .wide.accent{background:linear-gradient(135deg,var(--primary),#9B40A6);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(109,46,140,.28)}
   .wide.accent .ic{background:rgba(255,255,255,.22)} .wide.accent .ic svg{stroke:#fff} .wide.accent .small{color:rgba(255,255,255,.85)}
   .wide .small{display:block}
+  .spk-card{display:flex;align-items:center;gap:14px;background:#fff;border-radius:20px;padding:12px 14px;margin:4px 0 14px;
+    box-shadow:0 4px 14px rgba(109,46,140,.08)}
+  .spk-card .ava{width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:50% 20%;flex:none;
+    border:3px solid #fff;box-shadow:0 0 0 2px var(--gold2)}
+  .spk-card .nm{font-weight:800;font-size:16px;line-height:1.2}
+  .spk-card .rl{font-size:13px;color:var(--muted);margin-top:2px}
+  .spk-card .asks{display:inline-block;margin-top:6px;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+    background:linear-gradient(135deg,var(--gold1),var(--gold2));color:var(--gold-ink);border-radius:999px;padding:3px 9px}
+  .q-card{position:relative;background:#fff;border-radius:20px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(109,46,140,.08)}
+  .q-card::before{content:"";position:absolute;top:-9px;left:40px;border:10px solid transparent;border-bottom-color:#fff;border-top:0}
+  .q-card p{margin:0 0 10px;font-size:15px;line-height:1.45}
+  .q-card p.ask{margin:0;font-weight:700;font-size:16px;color:var(--primary-d)}
   .pid{font-size:11px;color:var(--muted);text-align:center;margin-top:12px}
   .toast{position:fixed;left:50%;top:24px;transform:translateX(-50%) scale(.9);background:var(--ok);color:#fff;
     border-radius:18px;padding:16px 26px;font-weight:800;font-size:22px;opacity:0;
@@ -254,6 +266,10 @@ const CONFIG = {
     ]
   }
 };
+
+// Статистика в Google Таблицу: адрес веб-приложения Google Apps Script (…/exec).
+// Пока пусто — события копятся на телефоне и уйдут, как только адрес будет вписан.
+const STATS_URL = 'https://script.google.com/macros/s/AKfycbymvdVQJJEGLSB89tqd6Bc2nB6s8GDcbTqZqw-mZfEB23TtiaVmCNEE1ggTCNiAPY7D/exec';
 
 // Конфиг Firebase (Project settings → Your apps → Web). Пока пусто — локальный режим:
 // всё работает только во вкладках одного браузера, для проверки сценария.
@@ -402,7 +418,7 @@ const RU_K = 'йцукенгшщзхъфывапролджэячсмитьбю',
 const swapK = (t, a, b) => t.split('').map(c => { const i = a.indexOf(c); return i >= 0 ? b[i] : c; }).join('');
 function anketaBlock(){
   const A = CONFIG.anketa;
-  if (S.formDone) return '<a class="wide accent" href="' + esc(A.materialsUrl) + '" target="_blank" rel="noopener" onclick="store.set(\'s1/materials/\' + S.pid, store.now())">' +
+  if (S.formDone) return '<a class="wide accent" href="' + esc(A.materialsUrl) + '" target="_blank" rel="noopener" onclick="store.set(\'s1/materials/\' + S.pid, store.now()); track(\'Скачал материалы\')">' +
     '<span class="ic">' + I.book + '</span><span><b>Скачать полезные материалы</b><span class="small">Анкета заполнена. Спасибо!</span></span></a>';
   return '<div class="anketa"><div class="head2"><span class="ic">' + I.book + '</span><div><b>Полезные материалы Nutricia</b>' +
       '<div class="small">Заполните короткую анкету — и материалы откроются для скачивания</div></div></div>' +
@@ -413,11 +429,13 @@ function anketaBlock(){
 }
 function openForm(){
   const A = CONFIG.anketa;
+  track('Открыл анкету');
   store.set('s1/formOpened/' + S.pid, store.now());
   const u = A.formUrl + (A.pidParam ? (A.formUrl.indexOf('?') >= 0 ? '&' : '?') + A.pidParam + '=' + S.pid : '');
   window.open(u, '_blank', 'noopener');
 }
 function formDone(){
+  if (!S.formDone) track('Заполнил анкету');
   S.formDone = true; saveMe();
   store.set('s1/forms/' + S.pid, store.now());
 }
@@ -440,13 +458,15 @@ const S1 = {
     '<p>Нутритивная терапия — неотъемлемая часть лечения пациентов в ОРИТ.</p>' +
     '<p>Предлагаем Вам проверить свои знания и решить клиническую задачу. Это займёт меньше минуты.</p>' +
     tile('gold shine', 'gift', 'ЗА ПРАВИЛЬНЫЙ ОТВЕТ', esc(C1.prize), 'Количество ограничено') +
-    '<button class="btn" onclick="go(\'question\')">Решить задачу</button></main>',
+    '<button class="btn" onclick="track(\'Начал задачу\'); go(\'question\')">Решить задачу</button></main>',
 
   question: () => logo() + '<main>' +
     '<div class="head"><h2>Клиническая задача</h2><span class="badge gold">приз</span></div>' +
-    '<div class="say"><img class="ava" src="' + esc(C1.expert.photo) + '" alt="">' +
-      '<div class="bubble"><div class="who">' + esc(C1.expert.name) + '<span>' + esc(C1.expert.role) + '</span></div>' +
-      [].concat(C1.question).map((t, i, a) => '<p' + (i === a.length - 1 ? ' class="ask"' : '') + '>' + esc(t) + '</p>').join('') + '</div></div>' +
+    '<div class="spk-card"><img class="ava" src="' + esc(C1.expert.photo) + '" alt="">' +
+      '<div><div class="nm">' + esc(C1.expert.name) + '</div><div class="rl">' + esc(C1.expert.role) + '</div>' +
+      '<span class="asks">задаёт вопрос</span></div></div>' +
+    '<div class="q-card">' +
+      [].concat(C1.question).map((t, i, a) => '<p' + (i === a.length - 1 ? ' class="ask"' : '') + '>' + esc(t) + '</p>').join('') + '</div>' +
     C1.options.map((o, j) => '<button class="opt' + (S.s1.sel === j ? ' sel' : '') + '" onclick="pick1(' + j + ')">' + esc(o) + '</button>').join('') +
     '<div class="msg err" id="m"></div><div class="spacer"></div>' +
     '<button class="btn primary" onclick="answer1()">Ответить</button></main>',
@@ -476,6 +496,8 @@ async function answer1(){
   }
   saveMe();
   store.set('s1/answers/' + S.pid, { choice: S.s1.sel, correct, ts: t, day });
+  track('Ответил', { answer: C1.options[S.s1.sel].split('.')[0], correct: correct ? 'да' : 'нет',
+    prize: !correct ? '' : S.s1.prize === 'won' ? 'забронирован' : 'закончились', code: S.s1.prize === 'won' ? claimCode(S.pid) : '' });
   if (correct) toast(S.s1.prize === 'won' ? 'Верно! Приз ваш' : 'Верно!');
   go('result');
 }
@@ -483,6 +505,7 @@ function issue1(){
   if (!confirm('Отметить приз как выданный? Нажимает сотрудник стенда Nutricia.')) return;
   S.s1.issued = true; saveMe();
   store.set('s1/claims/' + S.pid + '/issued', true);
+  track('Приз выдан', { code: claimCode(S.pid) });
   render();
 }
 
@@ -691,7 +714,29 @@ function render(scroll){
   }
 }
 
+/* ---------- статистика в Google Таблицу ---------- */
+const QKEY = 'quiz2_stats_queue';
+function statsQueue(){ try { return JSON.parse(localStorage.getItem(QKEY)) || []; } catch(e){ return []; } }
+function track(event, extra){
+  if (MODE !== 'stage1') return;
+  const row = Object.assign({ ts: new Date().toISOString(), pid: S.pid, event, answer: '', correct: '', prize: '', code: '',
+    device: /iPhone|iPad/.test(navigator.userAgent) ? 'iOS' : /Android/.test(navigator.userAgent) ? 'Android' : 'другое' }, extra || {});
+  const q = statsQueue(); q.push(row);
+  try { localStorage.setItem(QKEY, JSON.stringify(q)); } catch(e){}
+  flushStats();
+}
+function flushStats(){
+  if (!STATS_URL) return;
+  const q = statsQueue(); if (!q.length) return;
+  try { localStorage.setItem(QKEY, '[]'); } catch(e){}
+  fetch(STATS_URL, { method: 'POST', mode: 'no-cors', keepalive: true,
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ rows: q }) })
+    .catch(() => { try { localStorage.setItem(QKEY, JSON.stringify(q.concat(statsQueue()))); } catch(e){} });
+}
+window.addEventListener('online', flushStats);
+
 loadMe();
+track('Открыл приложение');
 if (P.get('anketa') === 'ok') { formDone(); try { history.replaceState(null, '', location.pathname); } catch(e){} }
 document.title = MODE === 'admin' ? 'Панель организатора' : MODE === 'stage2' ? 'Квиз симпозиума — Nutricia' : 'Проверь себя — Nutricia';
 store.subscribe(d => { D = d; render(); });
