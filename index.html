@@ -104,6 +104,36 @@
   .ava-s{width:44px;height:44px;border-radius:50%;object-fit:cover;object-position:50% 20%;flex:none;border:2px solid #fff;box-shadow:0 0 0 1.5px var(--gold2)}
   .expl.bubble-l{margin:0;border-radius:6px 18px 18px 18px;flex:1}
   .expl .who{font-size:12px;font-weight:800;color:var(--primary-d);margin-bottom:4px}
+  .bubble p{margin:0 0 8px;font-size:15px;font-weight:400;line-height:1.4}
+  .bubble p.ask{margin:0;font-weight:700;font-size:16px}
+  .prize{display:flex;align-items:stretch;border-radius:20px;overflow:hidden;margin-bottom:14px;color:var(--gold-ink);
+    background:linear-gradient(135deg,var(--gold1),var(--gold2));box-shadow:0 6px 18px rgba(226,180,67,.45);position:relative}
+  .prize::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.75) 50%,transparent 65%);background-size:300% 100%;animation:shine 3.4s ease-in-out infinite}
+  .prize.issued{filter:saturate(.55);box-shadow:none} .prize.issued::after{display:none}
+  .prize-main{flex:1;padding:16px 16px 14px}
+  .prize .n{font-size:12px;font-weight:800;letter-spacing:.06em;opacity:.85}
+  .prize .v{font-size:19px;font-weight:800;line-height:1.2;margin-top:2px}
+  .prize .d{font-size:13px;line-height:1.3;margin-top:4px}
+  .prize-side{flex:none;width:92px;border:0;border-left:2px dashed rgba(107,70,0,.35);background:rgba(255,255,255,.35);
+    color:var(--gold-ink);font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+    padding:8px 6px;cursor:pointer;text-align:center;position:relative;z-index:1}
+  .prize-side svg{width:26px;height:26px;fill:none;stroke:var(--gold-ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .prize-side span{font-size:13px;font-weight:800;line-height:1.15}
+  .prize-side small{font-size:10px;line-height:1.15;opacity:.8}
+  .prize-side:active{background:rgba(255,255,255,.6)}
+  .prize-side.done{cursor:default;background:rgba(255,255,255,.5)}
+  .anketa{background:#fff;border:1.5px solid var(--line);border-radius:20px;padding:14px;margin-bottom:6px}
+  .anketa .head2{display:flex;gap:12px;align-items:center}
+  .anketa .head2 .ic{width:42px;height:42px;border-radius:13px;flex:none;background:var(--soft);display:flex;align-items:center;justify-content:center}
+  .anketa .head2 .ic svg{width:24px;height:24px;fill:none;stroke:var(--primary-d);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .anketa b{font-size:15px}
+  .code-row{display:flex;gap:8px;margin-top:10px}
+  .code-row .input{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:14px;padding:12px;font-size:16px;font-family:inherit}
+  .code-row .btn{width:auto;margin:0;padding:12px 16px;font-size:16px}
+  .wide.accent{background:linear-gradient(135deg,var(--primary),#9B40A6);border-color:transparent;color:#fff;box-shadow:0 6px 16px rgba(109,46,140,.28)}
+  .wide.accent .ic{background:rgba(255,255,255,.22)} .wide.accent .ic svg{stroke:#fff} .wide.accent .small{color:rgba(255,255,255,.85)}
+  .wide .small{display:block}
   .pid{font-size:11px;color:var(--muted);text-align:center;margin-top:12px}
   .toast{position:fixed;left:50%;top:24px;transform:translateX(-50%) scale(.9);background:var(--ok);color:#fff;
     border-radius:18px;padding:16px 26px;font-weight:800;font-size:22px;opacity:0;
@@ -156,7 +186,15 @@ const CONFIG = {
   // Логотип и фото встроены в файл. Чтобы заменить — пришлите новые картинки или впишите имя файла, например 'logo.png'.
   logo: LOGO_DATA,
 
-  // Электронный справочник Nutricia — бонус для всех на этапе 1
+  // Анкета (персональные данные) и полезные материалы, которые открываются после неё
+  anketa: {
+    formUrl: 'https://forms.yandex.ru/cloud/6ae1b1c51f1eb53da43ea37c',
+    pidParam: 'pid',           // скрытый вопрос формы, куда подставляется ID участника (необязательно)
+    // Основной способ: в Яндекс Форме «Событие после отправки» → «Перенаправлять на сайт»:
+    //   https://neuro-quest.github.io/FARR-2026/?anketa=ok
+    code: '',  // кодовое слово не используется
+    materialsUrl: 'https://drive.google.com/drive/folders/1QDOL7z5uqaZoPXevC9cFcXg2Sp6W2xtt?usp=drive_link'
+  },
   guideUrl: 'https://drive.google.com/drive/folders/1QDOL7z5uqaZoPXevC9cFcXg2Sp6W2xtt?usp=drive_link',
 
   symposium: {
@@ -176,15 +214,23 @@ const CONFIG = {
 
   /* ---------- ЭТАП 1. «Проверь себя» (до симпозиума) ---------- */
   stage1: {
-    // Клиническая задачка. correct — номер правильного варианта, считая с нуля.
-    // Эксперт, от имени которого задаётся вопрос (фото — файл рядом с index.html)
+    // Клиническая задача. correct — номер правильного варианта, считая с нуля (0 = А, 1 = Б, 2 = В).
+    // Эксперт, от имени которого задаётся вопрос (фото встроено в файл)
     expert: { name: 'Пасечник И. Н.', role: 'Модератор симпозиума Nutricia', photo: EXPERT_DATA },
-    question: 'Назовите лучшие парикмахерские в СПб',
-    options: ['[Вариант ответа 1]', '[Вариант ответа 2]', '[Вариант ответа 3]'],
-    correct: 0,
-    explanation: '[Короткое пояснение от медицинского советника: почему верен этот ответ]',
+    // Абзацы задачи. Последний абзац (сам вопрос) выделяется жирным.
+    question: [
+      'Пациент, 56 лет, госпитализирован в ОРИТ с тяжелой ЧМТ.',
+      'На 4-е сутки состояние стабилизируется, однако на фоне проводимой инсулинотерапии сохраняется гипергликемия >12 ммоль/л. Пациент нуждается в энтеральном питании, при этом актуальны повышенные потребности в белке и энергии.',
+      'Какой продукт линейки Нутриция целесообразно рассмотреть?'
+    ],
+    options: [
+      'А. Нутризон Эдванст Диазон',
+      'Б. Нутризон Диазон НЕ НР (High Energy High Protein)',
+      'В. Стандартная смесь для энтерального питания'
+    ],
+    correct: 1,
     // Приз за правильный ответ — ограниченное количество в день
-    prize: 'ежедневник Nutricia',
+    prize: 'Подарок от Nutricia',
     limitPerDay: { '2026-10-31': 65, '2026-11-01': 65, default: 65 }, // default — для проверки в другие дни
     claimUntil: 'до 18:00 сегодня'
   },
@@ -337,16 +383,49 @@ function prizeBlock1(){
   const r = S.s1;
   if (!r.answered || !r.correct) return '';
   if (r.prize === 'won') {
-    const issued = D.s1 && D.s1.claims && D.s1.claims[S.pid] && D.s1.claims[S.pid].issued;
-    return '<div class="tile gold shine"><span class="ic">' + I.gift + '</span><span>' +
+    const issued = r.issued || (D.s1 && D.s1.claims && D.s1.claims[S.pid] && D.s1.claims[S.pid].issued);
+    return '<div class="prize' + (issued ? ' issued' : '') + '"><div class="prize-main">' +
       '<span class="n">ВАШ ПРИЗ</span><div class="v">' + esc(C1.prize) + '</div>' +
-      (issued ? '<div class="d"><b>✓ Выдан. Спасибо!</b></div>'
-              : '<div class="d">Покажите этот экран сотруднику на стенде Nutricia ' + esc(C1.claimUntil) + '</div><div class="code">' + claimCode(S.pid) + '</div>') +
-      '</span></div>' +
-      (issued ? '' : '<button class="btn ghost" onclick="issue1()">Приз выдан — нажимает сотрудник</button>');
+      (issued ? '<div class="d"><b>✓ Приз получен. Спасибо!</b></div>'
+              : '<div class="d">Покажите этот экран сотруднику на стенде Nutricia</div><div class="code">' + claimCode(S.pid) + '</div>') +
+      '</div>' +
+      (issued ? '<div class="prize-side done">' + I.check + '<span>Выдан</span></div>'
+              : '<button class="prize-side" onclick="issue1()">' + I.gift + '<span>Приз<br>выдан</span><small>нажимает<br>сотрудник</small></button>') +
+      '</div>';
   }
   if (r.prize === 'none') return tile('gray', 'gift', '', 'Призы на сегодня закончились', 'Ждём вас на симпозиуме Nutricia и на стенде.');
   return '';
+}
+
+const normW = t => (t || '').toLowerCase().replace(/ё/g, 'е').replace(/[^a-zа-я0-9]/g, '');
+const RU_K = 'йцукенгшщзхъфывапролджэячсмитьбю', EN_K = 'qwertyuiop[]asdfghjkl;\'zxcvbnm,.';
+const swapK = (t, a, b) => t.split('').map(c => { const i = a.indexOf(c); return i >= 0 ? b[i] : c; }).join('');
+function anketaBlock(){
+  const A = CONFIG.anketa;
+  if (S.formDone) return '<a class="wide accent" href="' + esc(A.materialsUrl) + '" target="_blank" rel="noopener" onclick="store.set(\'s1/materials/\' + S.pid, store.now())">' +
+    '<span class="ic">' + I.book + '</span><span><b>Скачать полезные материалы</b><span class="small">Анкета заполнена. Спасибо!</span></span></a>';
+  return '<div class="anketa"><div class="head2"><span class="ic">' + I.book + '</span><div><b>Полезные материалы Nutricia</b>' +
+      '<div class="small">Заполните короткую анкету — и материалы откроются для скачивания</div></div></div>' +
+    '<button class="btn primary" onclick="openForm()">Заполнить анкету</button>' +
+    (A.code ? '<div class="code-row"><input class="input" id="fcode" placeholder="Кодовое слово" autocomplete="off" autocapitalize="off">' +
+      '<button class="btn" onclick="checkForm()">Открыть</button></div><div class="msg err" id="fm"></div>' : '') +
+    '</div>';
+}
+function openForm(){
+  const A = CONFIG.anketa;
+  store.set('s1/formOpened/' + S.pid, store.now());
+  const u = A.formUrl + (A.pidParam ? (A.formUrl.indexOf('?') >= 0 ? '&' : '?') + A.pidParam + '=' + S.pid : '');
+  window.open(u, '_blank', 'noopener');
+}
+function formDone(){
+  S.formDone = true; saveMe();
+  store.set('s1/forms/' + S.pid, store.now());
+}
+function checkForm(){
+  const v = normW($('fcode').value), code = normW(CONFIG.anketa.code);
+  if (!v) { $('fm').textContent = 'Введите кодовое слово'; return; }
+  if ([v, normW(swapK(v, EN_K, RU_K)), normW(swapK(v, RU_K, EN_K))].indexOf(code) < 0) { $('fm').textContent = 'Слово не подошло. Проверьте написание.'; return; }
+  formDone(); toast('Материалы открыты'); render();
 }
 
 const shortName = n => { const p = n.split(' '); return p.length === 3 ? p[0] + ' ' + p[1][0] + '. ' + p[2][0] + '.' : n; };
@@ -359,15 +438,15 @@ const S1 = {
     '<h1>Уважаемый коллега!</h1>' +
     '<p>Команда <b>Nutricia</b> рада приветствовать Вас на ' + esc(CONFIG.eventName) + '.</p>' +
     '<p>Нутритивная терапия — неотъемлемая часть лечения пациентов в ОРИТ.</p>' +
-    '<p>Предлагаем Вам проверить свои знания и решить клиническую задачку. Это займёт меньше минуты.</p>' +
+    '<p>Предлагаем Вам проверить свои знания и решить клиническую задачу. Это займёт меньше минуты.</p>' +
     tile('gold shine', 'gift', 'ЗА ПРАВИЛЬНЫЙ ОТВЕТ', esc(C1.prize), 'Количество ограничено') +
-    '<button class="btn" onclick="go(\'question\')">Решить задачку</button></main>',
+    '<button class="btn" onclick="go(\'question\')">Решить задачу</button></main>',
 
   question: () => logo() + '<main>' +
-    '<div class="head"><h2>Клиническая задачка</h2><span class="badge gold">приз</span></div>' +
+    '<div class="head"><h2>Клиническая задача</h2><span class="badge gold">приз</span></div>' +
     '<div class="say"><img class="ava" src="' + esc(C1.expert.photo) + '" alt="">' +
       '<div class="bubble"><div class="who">' + esc(C1.expert.name) + '<span>' + esc(C1.expert.role) + '</span></div>' +
-      esc(C1.question) + '</div></div>' +
+      [].concat(C1.question).map((t, i, a) => '<p' + (i === a.length - 1 ? ' class="ask"' : '') + '>' + esc(t) + '</p>').join('') + '</div></div>' +
     C1.options.map((o, j) => '<button class="opt' + (S.s1.sel === j ? ' sel' : '') + '" onclick="pick1(' + j + ')">' + esc(o) + '</button>').join('') +
     '<div class="msg err" id="m"></div><div class="spacer"></div>' +
     '<button class="btn primary" onclick="answer1()">Ответить</button></main>',
@@ -376,22 +455,12 @@ const S1 = {
     const r = S.s1;
     const opts = C1.options.map((o, j) => '<button class="opt' + (j === C1.correct ? ' right' : j === r.sel ? ' wrong' : '') + '" disabled>' + esc(o) + '</button>').join('');
     return logo() + '<main>' +
-      '<h2>' + (r.correct ? 'Верно! 🎉' : 'Хороший вопрос для обсуждения') + '</h2>' + opts +
-      '<div class="expl-row"><img class="ava-s" src="' + esc(C1.expert.photo) + '" alt="">' +
-      '<div class="expl bubble-l"><div class="who">' + esc(shortName(C1.expert.name)) + '</div><b class="' + (r.correct ? 'ok' : 'err') + '">' + (r.correct ? 'Правильный ответ.' : 'Правильный ответ: ' + esc(C1.options[C1.correct]) + '.') + '</b> ' + esc(C1.explanation) + '</div></div>' +
-      prizeBlock1() +
-      '<div class="spacer"></div>' +
-      '<button class="btn primary" onclick="go(\'invite\')">Продолжим на симпозиуме →</button></main>';
-  },
-
-  invite: () => logo() + '<main>' +
-    '<h2>Продолжим обсуждение на симпозиуме</h2>' + sympBlock() +
-    prizeBlock1() +
-    '<a class="wide" href="' + esc(CONFIG.guideUrl) + '" target="_blank" rel="noopener"><span class="ic">' + I.book + '</span>' +
-      '<span><b>Скачать справочник по продуктам Nutricia</b><span class="small">Бонус для всех участников</span></span></a>' +
-    '<div class="spacer"></div>' +
-    '<button class="btn" onclick="go(\'result\')">← К ответу</button>' +
-    '<div class="pid">ID: ' + S.pid + '</div></main>'
+      (r.correct ? '<h2>Верно! 🎉</h2>' + prizeBlock1()
+                 : '<h2>Хороший вопрос для обсуждения</h2>' + opts) +
+      '<h2 style="margin-top:6px">Продолжим обсуждение на симпозиуме</h2>' + sympBlock() +
+      anketaBlock() +
+      '<div class="pid">ID: ' + S.pid + '</div></main>';
+  }
 };
 
 function pick1(j){ S.s1.sel = j; saveMe(); render(); }
@@ -410,7 +479,12 @@ async function answer1(){
   if (correct) toast(S.s1.prize === 'won' ? 'Верно! Приз ваш' : 'Верно!');
   go('result');
 }
-function issue1(){ store.set('s1/claims/' + S.pid + '/issued', true); }
+function issue1(){
+  if (!confirm('Отметить приз как выданный? Нажимает сотрудник стенда Nutricia.')) return;
+  S.s1.issued = true; saveMe();
+  store.set('s1/claims/' + S.pid + '/issued', true);
+  render();
+}
 
 /* ===================================================================
    ЭТАП 2. Квиз на симпозиуме
@@ -526,7 +600,8 @@ function admin(){
 
     '<div class="panel"><h2>Этап 1 · «Проверь себя»</h2>' +
       '<div class="kpis">' + kpi(a1.length, 'ответили') + kpi(a1.filter(x => x.correct).length, 'ответили верно') +
-        kpi(usedToday + ' / ' + limitFor(day), 'призов забронировано сегодня') + kpi(issued1, 'призов выдано') + '</div>' +
+        kpi(usedToday + ' / ' + limitFor(day), 'призов забронировано сегодня') + kpi(issued1, 'призов выдано') +
+        kpi(Object.keys((D.s1 && D.s1.formOpened) || {}).length, 'открыли анкету') + kpi(Object.keys((D.s1 && D.s1.forms) || {}).length, 'заполнили анкету') + '</div>' +
       '<button class="btn" onclick="showQr(1)">QR для приглашения и плазмы</button>' +
       (claimList ? '<p class="small" style="margin-top:12px">Коды на ' + esc(C1.prize) + ' (последние 30):</p><ul class="wl">' + claimList + '</ul>' : '') +
     '</div>' +
@@ -586,7 +661,7 @@ function showQr(n){
 function pickScreen(){
   if (MODE === 'stage1') {
     if (!S.s1.answered) return ['welcome', 'question'].indexOf(screen) >= 0 ? screen : 'welcome';
-    return ['result', 'invite'].indexOf(screen) >= 0 ? screen : 'invite';
+    return 'result';
   }
   if (MODE === 'stage2') {
     if (S.s2.submitted || (my2() && my2().finish)) return 'done';
@@ -600,8 +675,13 @@ function render(scroll){
   screen = pickScreen();
   const app = $('app');
   app.className = 'app' + (MODE === 'admin' ? ' wide-app' : '');
+  // сохраняем введённый текст и фокус: экран перерисовывается при каждом обновлении данных
+  const keep = {}; app.querySelectorAll('input[id],textarea[id]').forEach(el => keep[el.id] = el.value);
+  const focusId = document.activeElement && document.activeElement.id;
   if (MODE === 'admin') app.innerHTML = admin();
   else app.innerHTML = (MODE === 'stage1' ? S1 : S2)[screen]();
+  Object.keys(keep).forEach(id => { const el = $(id); if (el) el.value = keep[id]; });
+  if (focusId && $(focusId) && !scroll) $(focusId).focus();
   if (scroll) window.scrollTo(0, 0);
   // конфетти, когда врач узнаёт, что победил
   if (MODE === 'stage2' && screen === 'done') {
@@ -612,9 +692,10 @@ function render(scroll){
 }
 
 loadMe();
+if (P.get('anketa') === 'ok') { formDone(); try { history.replaceState(null, '', location.pathname); } catch(e){} }
 document.title = MODE === 'admin' ? 'Панель организатора' : MODE === 'stage2' ? 'Квиз симпозиума — Nutricia' : 'Проверь себя — Nutricia';
 store.subscribe(d => { D = d; render(); });
-setInterval(() => { if (MODE !== 'stage1' || screen === 'invite') render(); }, 30000);
+setInterval(() => { if (MODE !== 'stage1') render(); }, 30000);
 </script>
 </body>
 </html>
